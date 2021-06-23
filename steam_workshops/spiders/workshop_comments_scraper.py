@@ -16,6 +16,7 @@ class Workshop_Item(Item):
     user_location = Field()
     number_of_badges = Field()
     user_join_date = Field()
+    is_author = Field()
 
 
 class Workshop_Comment_Spider(scrapy.Spider):
@@ -24,9 +25,14 @@ class Workshop_Comment_Spider(scrapy.Spider):
         urls = [line.rstrip("\n") for line in f]
     start_urls = urls
 
-    def parse(self, response):     
+    def parse(self, response):
         for comment in response.css(".commentthread_comment"):
             item = Workshop_Item()
+            item['is_author'] = False
+
+            if "authorbadge" in comment.get():
+                item['is_author'] = True
+
             item['app_id'] = response.css('div.apphub_HeaderTop a::attr(data-appid)').get()
             item['workshop_id'] = response.css('form.smallForm input::attr(value)').get()
             item['game'] = response.css(".apphub_AppName::text").get()
