@@ -14,7 +14,7 @@ NEWSPIDER_MODULE = 'steam_workshops.spiders'
 
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
-#USER_AGENT = 'steam_workshops (+http://www.yourdomain.com)'
+USER_AGENT = 'steam_workshops (+http://www.yourdomain.com)'
 
 # Obey robots.txt rules
 ROBOTSTXT_OBEY = True
@@ -75,7 +75,7 @@ ROBOTSTXT_OBEY = True
 #AUTOTHROTTLE_MAX_DELAY = 60
 # The average number of requests Scrapy should be sending in parallel to
 # each remote server
-AUTOTHROTTLE_TARGET_CONCURRENCY = 1.0
+#AUTOTHROTTLE_TARGET_CONCURRENCY = 1.0
 # Enable showing throttling stats for every response received:
 #AUTOTHROTTLE_DEBUG = False
 
@@ -86,3 +86,4 @@ AUTOTHROTTLE_TARGET_CONCURRENCY = 1.0
 #HTTPCACHE_DIR = 'httpcache'
 #HTTPCACHE_IGNORE_HTTP_CODES = []
 #HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.FilesystemCacheStorage'
+DUPEFILTER_CLASS = 'scrapy.dupefilters.BaseDupeFilter'
