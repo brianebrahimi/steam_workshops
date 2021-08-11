@@ -22,6 +22,9 @@ class Workshop_Item(Item):
     user_join_date = Field()
     is_author = Field()
     user_experience = Field()
+    aliases = Field()
+    comment_date_posted = Field()
+    comment_time_posted = Field()
 
 
 class Workshop_Comment_Spider(scrapy.Spider):
@@ -34,8 +37,7 @@ class Workshop_Comment_Spider(scrapy.Spider):
         #if more than 0 comments, the workshop creators id number is saved
         if int(max(response.css('span.tabCount::text').getall())) > 0:
             contributor_id = re.search(r'Public_(.*?)_' , response.css('div.commentthread_footer a::attr(id)').get()).group(1)
-        #elif int(max(response.css('span.tabCount::text').getall())) > 0:
-        #    contributor_id = re.search(r'Public_(.*?)_' , response.css('div.commentthread_footer a::attr(id)').get()).group(1)
+
         workshop_id_number = response.css('form.smallForm > input::attr(value)').get()
 
         if max(list(map(int, response.css('span.tabCount::text').getall()))) > 50:
@@ -63,6 +65,7 @@ class Workshop_Comment_Spider(scrapy.Spider):
             for comment in response.css(".commentthread_comment.responsive_body_text"):
                 item = Workshop_Item()
                 item['is_author'] = False
+                item['aliases'] = 'none'
 
                 if "authorbadge" in comment.get():
                     item['is_author'] = True
@@ -72,7 +75,7 @@ class Workshop_Comment_Spider(scrapy.Spider):
                 item['game'] = response.css(".apphub_AppName::text").get()
                 item['workshop_name'] = response.css(".workshopItemTitle::text").get()
                 item['user'] = comment.css("bdi::text").get()
-                item['comment'] = ",".join(comment.css(".commentthread_comment_text::text").getall()).replace('\n', ' ').replace('\t', '').replace('\r', ' ')
+                item['comment'] = ",".join(comment.css(".commentthread_comment_text::text").getall()).replace('\n', ' ').replace('\t', '').replace('\r', ' ').replace(";", "")
                 
                 date_posted_list = comment.css(".commentthread_comment_timestamp::attr(title)").get().replace(",", "").replace(".", "").split(" ")
                 date_posted_list_time = date_posted_list[4].split(":")
@@ -88,13 +91,14 @@ class Workshop_Comment_Spider(scrapy.Spider):
 
     def parse_user_info(self, response):
         item = response.meta['item']
+
         if response.css('.profile_private_info'):
             item['user_level'] = 'private'
             item['user_location'] = 'private'
             item['number_of_badges'] = 'private'
             item['user_join_date'] = 'private'
             item['user_experience'] = 'private'
-            yield item
+            yield Request(response.request.url + "/ajaxaliases", callback=self.parse_aliases, meta={'item': item})
         else:
             item['user_level'] = response.css(".friendPlayerLevelNum::text").get()
 
@@ -112,6 +116,21 @@ class Workshop_Comment_Spider(scrapy.Spider):
             request = Request(user_badge_page, callback=self.parse_badge_info, meta={'item': item})
             yield request
 
+    def parse_aliases(self, response):
+        item = response.meta['item']
+        jsonresponse = json.loads(response.text)
+        item['aliases'] = []
+        for name in jsonresponse:
+            item['aliases'].append(name['newname'])
+        if item['aliases'] == []:
+            item['aliases'] = "NONE"
+
+        item['comment_date_posted'] = item['date_posted'].split("T")[0]
+        item['comment_time_posted'] = item['date_posted'].split("T")[1]
+        del item['date_posted']
+        yield item
+
+
     def parse_badge_info(self, response):
         item = response.meta['item']
         if "Years of Service" in response.css("title::text").get():
@@ -127,7 +146,7 @@ class Workshop_Comment_Spider(scrapy.Spider):
         item = response.meta['item']
         if response.css('span.profile_xp_block_xp'):
             item['user_experience'] = response.css('span.profile_xp_block_xp::text').get()
-        yield item
+        yield Request(response.css("span.profile_small_header_name a::attr(href)").get() + "/ajaxaliases", callback=self.parse_aliases, meta={'item': item})
 
     def parse_paginated_comments(self, response):
         app_id = response.meta['app_id']
@@ -149,7 +168,7 @@ class Workshop_Comment_Spider(scrapy.Spider):
             item['game'] = game #sel.css(".apphub_AppName::text").get()
             item['workshop_name'] = workshop_name #sel.css(".workshopItemTitle::text").get()
             item['user'] = comment.css("bdi::text").get()
-            item['comment'] = ",".join(comment.css(".commentthread_comment_text::text").getall()).replace('\n', ' ').replace('\t', '').replace('\r', ' ')
+            item['comment'] = ",".join(comment.css(".commentthread_comment_text::text").getall()).replace('\n', ' ').replace('\t', '').replace('\r', ' ').replace(";", "")
            
             date_posted_list = comment.css(".commentthread_comment_timestamp::attr(title)").get().replace(",", "").replace(".", "").split(" ")
             date_posted_list_time = date_posted_list[4].split(":")
